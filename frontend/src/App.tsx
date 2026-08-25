@@ -24,6 +24,7 @@ import { ManagementPage } from './pages/ManagementPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { NetworkDesignerPage } from './pages/NetworkDesignerPage';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -65,6 +66,7 @@ export const App: React.FC = () => {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="topology" element={<TopologyPage />} />
+              <Route path="designer" element={<NetworkDesignerPage />} />
               <Route path="devices" element={<DevicesPage />} />
               <Route path="devices/:id" element={<DeviceDetailPage />} />
               <Route path="interfaces" element={<InterfacesPage />} />

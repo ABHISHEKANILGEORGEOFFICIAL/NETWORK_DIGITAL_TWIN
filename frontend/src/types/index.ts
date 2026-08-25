@@ -326,6 +326,60 @@ export interface SnapshotComparison {
   }>;
 }
 
+export type DesignerComponentType =
+  | 'router'
+  | 'switch_l2'
+  | 'switch_l3'
+  | 'firewall'
+  | 'server'
+  | 'access_point'
+  | 'load_balancer'
+  | 'cloud'
+  | 'workstation'
+  | 'internet';
+
+export interface DesignerComponentConfig {
+  name: string;
+  ip_address: string;
+  description: string;
+  speed_mbps: number;
+  vlan?: number;
+  ports?: number;
+  ssid?: string;
+  subnet?: string;
+  gateway?: string;
+  os?: string;
+  role?: string;
+}
+
+export interface DesignerNodeData {
+  id: string;
+  componentType: DesignerComponentType;
+  label: string;
+  config: DesignerComponentConfig;
+}
+
+export interface DesignerLink {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+  label?: string;
+  bandwidth_mbps: number;
+  type: 'ethernet' | 'fiber' | 'wireless' | 'vpn';
+}
+
+export interface NetworkDesign {
+  id: string;
+  name: string;
+  description: string;
+  nodes: Array<{ id: string; type: DesignerComponentType; position: { x: number; y: number }; config: DesignerComponentConfig }>;
+  links: DesignerLink[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface NetworkReport {
   report_id: string;
   report_type: string;
