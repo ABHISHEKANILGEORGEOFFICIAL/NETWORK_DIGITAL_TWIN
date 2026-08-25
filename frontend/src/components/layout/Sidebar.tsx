@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Network, Server, EthernetPort, HeartPulse,
   Activity, Bell, AlertTriangle, Cpu, PlayCircle, HelpCircle,
-  Route, FileCode, Wrench, Boxes, FileText, Settings, ShieldCheck
+  Route, FileCode, Wrench, Boxes, FileText, Settings, ShieldCheck, PenTool
 } from 'lucide-react';
 import { useWebSocket } from '../../context/WebSocketContext';
 
@@ -24,6 +24,7 @@ export const Sidebar: React.FC = () => {
       items: [
         { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Live Topology', path: '/topology', icon: Network },
+        { name: 'Network Designer', path: '/designer', icon: PenTool },
         { name: 'Devices', path: '/devices', icon: Server, badge: liveMetrics?.total_devices || 36 },
         { name: 'Interfaces', path: '/interfaces', icon: EthernetPort, badge: liveMetrics?.total_interfaces || 60 },
         { name: 'Network Health', path: '/health', icon: HeartPulse, badge: `${liveMetrics?.network_health_score || 98}%` },

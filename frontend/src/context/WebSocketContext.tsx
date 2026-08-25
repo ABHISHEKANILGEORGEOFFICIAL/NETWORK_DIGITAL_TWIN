@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { GlobalMetrics, Alert, Incident } from '../types';
 import { api } from '../services/api';
 
 interface WebSocketContextType {
   isConnected: boolean;
   isLive: boolean;
-  lastUpdate: Date | null;
+  lastUpdate: string | null;
   liveMetrics: GlobalMetrics | null;
   activeAlerts: Alert[];
   incidents: Incident[];
@@ -15,69 +15,68 @@ interface WebSocketContextType {
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [liveMetrics, setLiveMetrics] = useState<GlobalMetrics | null>(null);
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
 
   const wsTelemetryRef = useRef<WebSocket | null>(null);
   const wsAlertsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<any>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
-      const [metrics, alerts, incs] = await Promise.all([
+      const [metrics, alerts, incs] = await Promise.allSettled([
         api.getLiveMetrics(),
         api.getAlerts(),
         api.getIncidents(),
       ]);
-      setLiveMetrics(metrics);
-      setActiveAlerts(alerts);
-      setIncidents(incs);
-      setLastUpdate(new Date());
-    } catch (e) {
-      console.warn('REST initial fetch fallback active:', e);
-    }
-  };
 
-  const connectWebSockets = () => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/telemetry`;
-    const alertsUrl = `${protocol}//${host}/ws/alerts`;
+      if (metrics.status === 'fulfilled') {
+        setLiveMetrics(metrics.value);
+        setLastUpdate(new Date().toISOString());
+      }
+      if (alerts.status === 'fulfilled') setActiveAlerts(alerts.value);
+      if (incs.status === 'fulfilled') setIncidents(incs.value);
+
+      setIsConnected(true);
+    } catch {
+      setIsConnected(false);
+    }
+  }, []);
+
+  const connectWebSockets = useCallback(() => {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.hostname;
+    const wsPort = '8000';
 
     try {
-      const ws = new WebSocket(wsUrl);
-      wsTelemetryRef.current = ws;
+      // Telemetry channel
+      const telemetryUrl = `${wsProtocol}//${wsHost}:${wsPort}/ws/telemetry`;
+      const wsTelemetry = new WebSocket(telemetryUrl);
+      wsTelemetryRef.current = wsTelemetry;
 
-      ws.onopen = () => {
-        setIsConnected(true);
-      };
-
-      ws.onmessage = (event) => {
+      wsTelemetry.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
-          if (payload.type === 'TELEMETRY_UPDATE' && payload.data) {
-            setLiveMetrics(payload.data);
-            setLastUpdate(new Date());
+          if (payload.type === 'TELEMETRY_UPDATE') {
+            if (payload.metrics) setLiveMetrics(payload.metrics);
+            setLastUpdate(new Date().toISOString());
           }
         } catch (err) {
           console.error('Error parsing telemetry WS message:', err);
         }
       };
 
-      ws.onclose = () => {
+      wsTelemetry.onopen = () => setIsConnected(true);
+      wsTelemetry.onclose = () => {
         setIsConnected(false);
         scheduleReconnect();
       };
 
-      ws.onerror = () => {
-        setIsConnected(false);
-        ws.close();
-      };
-
       // Alerts channel
+      const alertsUrl = `${wsProtocol}//${wsHost}:${wsPort}/ws/alerts`;
       const wsAlerts = new WebSocket(alertsUrl);
       wsAlertsRef.current = wsAlerts;
 
@@ -97,7 +96,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.warn('WebSocket connection init failed:', err);
       scheduleReconnect();
     }
-  };
+  }, []);
 
   const scheduleReconnect = () => {
     if (reconnectTimeoutRef.current) return;
